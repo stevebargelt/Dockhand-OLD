@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/stevebargelt/harbormaster/docker"
+	"github.com/stevebargelt/harbormaster/jenkins"
 )
 
 var (
@@ -36,4 +37,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("Image ID:", newImage.ID)
+
+	jenkins.InitClient()
+
 }
