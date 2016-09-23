@@ -14,13 +14,21 @@ import (
 	"net/http"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
+	dockerClient "github.com/docker/docker/client"
 	"golang.org/x/net/context"
 )
 
-//  InitClient
-// is this the comment you are looking for
-func InitClient(dockerHost string, certFile string, keyFile string, caFile string) (*client.Client, error) {
+//Host - a Docker Host Client
+type Host struct {
+	URL       string
+	DockerCli *dockerClient.Client
+	//Logf   LogfCallback
+}
+
+//New - creates a new Docker Host with given docker host URL and TLS cert file paths
+func New(URL string, certFile string, keyFile string, caFile string) (*Host, error) {
+
+	url := strings.TrimSuffix(URL, "/")
 
 	// Load client cert
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
@@ -44,23 +52,50 @@ func InitClient(dockerHost string, certFile string, keyFile string, caFile strin
 
 	tlsConfig.BuildNameToCertificate()
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
+
+	return newClientFromTransport(url, transport)
+}
+
+//NewInsecure - creates a new Host with given docker host: this is not secure... please know what you are doing!
+func NewInsecure(URL string) (*Host, error) {
+
+	url := strings.TrimSuffix(URL, "/")
+
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	return newClientFromTransport(url, transport)
+}
+
+func newClientFromTransport(url string, transport http.RoundTripper) (*Host, error) {
+
 	httpCli := &http.Client{Transport: transport}
 
 	defaultHeaders := map[string]string{"User-Agent": "engine-api-cli-1.0"}
-	cli, err := client.NewClient(dockerHost, "v1.24", httpCli, defaultHeaders)
+	cli, err := dockerClient.NewClient(url, "v1.24", httpCli, defaultHeaders)
 	if err != nil {
 		return nil, err
 	}
 
-	return cli, nil
+	dockerHost := &Host{
+		URL:       url,
+		DockerCli: cli,
+	}
+
+	return dockerHost, nil
+
 }
 
-func GetDockerImage(cli *client.Client, imageName string, registryUsername string, registryPassword string, registryURL string) (*types.ImageInspect, error) {
+//GetDockerImage given imageName and the registry information returns a docker image
+func (d *Host) GetDockerImage(imageName, registryUsername, registryPassword, registryURL string) (*types.ImageInspect, error) {
 
-	fmt.Println("Looking for image", imageName, "...")
-	image, _, imageErr := cli.ImageInspectWithRaw(context.TODO(), imageName)
-
-	newImage, err := pullImage(cli, imageName, registryUsername, registryPassword, registryURL)
+	//TODO: log
+	//fmt.Println("Looking for image", imageName, "...")
+	image, _, imageErr := d.DockerCli.ImageInspectWithRaw(context.TODO(), imageName)
+	newImage, err := d.pullImage(imageName, registryUsername, registryPassword, registryURL)
 	if err != nil {
 		if imageErr == nil {
 			fmt.Println("Cannot pull the latest version of image", imageName, ":", err)
@@ -72,9 +107,10 @@ func GetDockerImage(cli *client.Client, imageName string, registryUsername strin
 	return newImage, nil
 }
 
-func pullImage(cli *client.Client, imageName string, registryUsername string, registryPassword string, registryURL string) (*types.ImageInspect, error) {
+func (d *Host) pullImage(imageName, registryUsername, registryPassword, registryURL string) (*types.ImageInspect, error) {
 
-	fmt.Println("Pulling docker image", imageName, "...")
+	//TODO: log
+	//fmt.Println("Pulling docker image", imageName, "...")
 
 	ref := imageName
 	// Add :latest to limit the download results
@@ -91,7 +127,7 @@ func pullImage(cli *client.Client, imageName string, registryUsername string, re
 	encodedAuth := base64.URLEncoding.EncodeToString(buf.Bytes())
 
 	options := types.ImagePullOptions{RegistryAuth: encodedAuth}
-	readCloser, err := cli.ImagePull(context.Background(), ref, options)
+	readCloser, err := d.DockerCli.ImagePull(context.Background(), ref, options)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +137,7 @@ func pullImage(cli *client.Client, imageName string, registryUsername string, re
 		return nil, fmt.Errorf("Failed to pull image: %s: %s", ref, err)
 	}
 
-	image, _, err := cli.ImageInspectWithRaw(context.Background(), imageName)
+	image, _, err := d.DockerCli.ImageInspectWithRaw(context.Background(), imageName)
 	return &image, err
 }
 
