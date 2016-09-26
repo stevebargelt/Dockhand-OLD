@@ -23,7 +23,7 @@ var (
 	label            = flag.String("label", "TeamBargelt_DotNetCore", "The name of the label to use in Jenkins")
 	jenkinsURL       = flag.String("jenkins", "http://dockerbuild.harebrained-apps.com", "The URL of the Jenkins Master.")
 	jenkinsUser      = flag.String("jenkinsuser", "stevebargelt", "A user with rights to the registry we are pulling the test image from.")
-	jenkinsPassword  = flag.String("jenkinspassword", "notARealPAssword", "The password of the registry user")
+	jenkinsPassword  = flag.String("jenkinspassword", "notARealPassword", "The password of the registry user")
 
 	dockerClient  *docker.Host
 	jenkinsClient *gojenkins.Jenkins
@@ -31,8 +31,9 @@ var (
 
 func main() {
 
-	flag.Parse()
 	var err error
+
+	flag.Parse()
 
 	fmt.Print("\n********************\nPulling ", *imageName, " from registry ", *registryURL, "\n********************\n")
 	fmt.Print("Connecting to dockerhost... ")
@@ -56,13 +57,32 @@ func main() {
 	fmt.Println("success! Pulled Image ID:", newImage.ID)
 
 	//Create a contianer from the image and run container
-	//TODO
+	fmt.Print("Creating continer name from ", *imageName, "\n...")
+	//TODO: unique value here for container name?
+	//TODO: create process to kill all containers that start with harbormasterTesting??
+	newContianer, err := dockerClient.CreateContainer(*imageName, "harbormasterTesting")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("sucess. Created container", newContianer.ID, "from", *imageName)
+
+	fmt.Print("Starting continer", newContianer.ID, "\n...")
+	err = dockerClient.StartContainer(newContianer.ID)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("sucess. Started container", newContianer.ID)
 
 	//Test the  container
-	//TODO
+	//TODO: Write tests to make sure the container fits your standards
+	//containerInfo, err := dockerClient.ContainerInspect(newContianer.ID)
+	//fmt.Println("CONTAINERINFO:\n State.Status:", containerInfo.State.Status)
 
 	//Remove container
-	//TODO
+	err = dockerClient.ContainerRemove(newContianer.ID)
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Print("\n\n********************\nAdd Slave Template to Jenkins\n********************\n")
 	//Add Docker Slave Template to Jenkins

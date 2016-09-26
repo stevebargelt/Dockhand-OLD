@@ -14,6 +14,7 @@ import (
 	"net/http"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	dockerClient "github.com/docker/docker/client"
 	"golang.org/x/net/context"
 )
@@ -141,33 +142,40 @@ func (d *Host) pullImage(imageName, registryUsername, registryPassword, registry
 	return &image, err
 }
 
-// Stuff I used at the start to test the connection to the Docker Host - might come in handy some day.
-// TODO: delete after adding to git
-// func randomTestStuff() {
+//CreateContainer - creates a container named containerName given an imageName
+func (d *Host) CreateContainer(imageName, containerName string) (*types.ContainerCreateResponse, error) {
 
-// 	fmt.Print("\n\n********************\nList Images\n********************\n")
-// 	imageOptions := types.ImageListOptions{All: true}
-// 	images, err := cli.ImageList(context.Background(), imageOptions)
-// 	if err != nil {
-// 		panic(err)
-// 	}
+	container, err := d.DockerCli.ContainerCreate(context.Background(), &container.Config{Image: imageName}, nil, nil, containerName)
+	if err != nil {
+		return nil, err
+	}
 
-// 	for _, i := range images {
-// 		fmt.Println(i.ID, i.Labels)
-// 	}
+	return &container, nil
 
-// 	fmt.Print("\n\n********************\nList Containers\n********************\n")
-// 	options := types.ContainerListOptions{All: true}
-// 	containers, err := cli.ContainerList(context.Background(), options)
-// 	if err != nil {
-// 		panic(err)
-// 	}
+}
 
-// 	for _, c := range containers {
-// 		fmt.Println(c.ID, c.Names)
-// 	}
+//StartContainer - runs a container named containerName given an imageName
+func (d *Host) StartContainer(containerID string) error {
 
-// 	fmt.Print("\n\n********************\nOther Info???\n********************\n")
-// 	fmt.Println("cli type=", reflect.TypeOf(cli))
+	err := d.DockerCli.ContainerStart(context.Background(), containerID, types.ContainerStartOptions{})
+	if err != nil {
+		return err
+	}
 
-// }
+	return nil
+
+}
+
+// ContainerInspect returns the deatils of a container given a containerID
+func (d *Host) ContainerInspect(containerID string) (types.ContainerJSON, error) {
+
+	return d.DockerCli.ContainerInspect(context.Background(), containerID)
+
+}
+
+//ContainerRemove - removes a container give a containerID
+func (d *Host) ContainerRemove(id string) error {
+
+	return d.DockerCli.ContainerRemove(context.Background(), id, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
+
+}
