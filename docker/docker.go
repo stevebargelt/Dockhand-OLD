@@ -168,7 +168,7 @@ func (d *Host) StartContainer(containerID string) error {
 
 // ContainerInspect returns the deatils of a container given a containerID
 func (d *Host) ContainerInspect(containerID string) (types.ContainerJSON, error) {
-
+	//TODO: this is FAILING
 	return d.DockerCli.ContainerInspect(context.Background(), containerID)
 
 }
