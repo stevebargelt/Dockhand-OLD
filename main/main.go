@@ -13,18 +13,19 @@ import (
 
 var (
 	dockerHostURL    = flag.String("dockerurl", "tcp://dockerbuild.harebrained-apps.com:2376", "the full address to the docker Jenkins host: tcp://<address>:<port>")
-	certFile         = flag.String("cert", "/users/steve/tlsBlog/cert.pem", "A PEM eoncoded certificate file.")
-	keyFile          = flag.String("key", "/users/steve/tlsBlog/key.pem", "A PEM encoded private key file.")
-	caFile           = flag.String("CA", "/users/steve/tlsBlog/ca.pem", "A PEM eoncoded CA's certificate file.")
+	certFile         = flag.String("cert", "/users/steve/tlsBlog/cert.pem", "Path to a PEM eoncoded certificate file.")
+	keyFile          = flag.String("key", "/users/steve/tlsBlog/key.pem", "Path to a PEM encoded private key file.")
+	caFile           = flag.String("CA", "/users/steve/tlsBlog/ca.pem", "Path to a PEM encoded CA certificate file.")
 	registryURL      = flag.String("registry", "https://dockerbuild.harebrained-apps.com", "The URL of the registry of where to find the image we are testing.")
 	registryUser     = flag.String("registryuser", "dockerUser", "A user with rights to the registry we are pulling the test image from.")
 	registryPassword = flag.String("registrypassword", "notARealPassword", "The password of the registry user")
 	imageName        = flag.String("imagename", "dockerbuild.harebrained-apps.com/jenkins-slavedotnet", "The name of the image we are testing.")
 	cloudName        = flag.String("cloudname", "AzureJenkins", "The name of the cloud configuration in Jenkins to use.")
-	label            = flag.String("label", "TeamBargelt_DotNetCore04", "The name of the label to use in Jenkins")
+	label            = flag.String("label", "TeamBargelt_DotNetCore22", "The name of the label to use in Jenkins")
 	jenkinsURL       = flag.String("jenkins", "http://dockerbuild.harebrained-apps.com", "The URL of the Jenkins Master.")
 	jenkinsUser      = flag.String("jenkinsuser", "stevebargelt", "A user with rights to the registry we are pulling the test image from.")
 	jenkinsPassword  = flag.String("jenkinspassword", "notARealPassword", "The password of the registry user")
+	repoURL          = flag.String("repourl", "https://github.com/stevebargelt/simpleDotNet.git", "The repo url.")
 
 	dockerClient  *docker.Host
 	jenkinsClient *gojenkins.Jenkins
@@ -100,25 +101,47 @@ func main() {
 	fmt.Print("Adding jenkins job... ")
 	//TODO: Move this to a config file...
 	configString := `<?xml version='1.0' encoding='UTF-8'?>
-						<flow-definition plugin="workflow-job@2.6">
-						<description></description>
-						<keepDependencies>false</keepDependencies>
-						<properties>
-							<org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
-							<triggers/>
-							</org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
-						</properties>
-						<definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.17">
-							<script>node (&apos;` + *label + `&apos;) {
-
-						stage (&apos;Stage 1&apos;) {
-							sh &apos;echo &quot;Hello World!&quot;&apos;
-						}
-						}</script>
-							<sandbox>true</sandbox>
-						</definition>
-						<triggers/>
-						</flow-definition>`
+<flow-definition plugin="workflow-job@2.6">
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.21.1">
+      <projectUrl>` + *repoURL + `</projectUrl>
+      <displayName></displayName>
+    </com.coravy.hudson.plugins.github.GithubProjectProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.TimerTrigger>
+          <spec>H */3 * * *</spec>
+        </hudson.triggers.TimerTrigger>
+        <com.cloudbees.jenkins.GitHubPushTrigger plugin="github@1.21.1">
+          <spec></spec>
+        </com.cloudbees.jenkins.GitHubPushTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2.17">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@3.0.0">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>` + *repoURL + `</url>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>*/master</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <submoduleCfg class="list"/>
+      <extensions/>
+    </scm>
+    <scriptPath>Jenkinsfile</scriptPath>
+  </definition>
+  <triggers/>
+</flow-definition>`
 
 	tempStr := *label + "_JOB"
 	newJob, err := jenkinsClient.CreateJob(configString, tempStr)
