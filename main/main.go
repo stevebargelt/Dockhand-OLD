@@ -18,10 +18,10 @@ var (
 	caFile           = flag.String("CA", "/users/steve/tlsBlog/ca.pem", "A PEM eoncoded CA's certificate file.")
 	registryURL      = flag.String("registry", "https://dockerbuild.harebrained-apps.com", "The URL of the registry of where to find the image we are testing.")
 	registryUser     = flag.String("registryuser", "dockerUser", "A user with rights to the registry we are pulling the test image from.")
-	registryPassword = flag.String("registrypassword", "notARealPAssword", "The password of the registry user")
+	registryPassword = flag.String("registrypassword", "notARealPassword", "The password of the registry user")
 	imageName        = flag.String("imagename", "dockerbuild.harebrained-apps.com/jenkins-slavedotnet", "The name of the image we are testing.")
 	cloudName        = flag.String("cloudname", "AzureJenkins", "The name of the cloud configuration in Jenkins to use.")
-	label            = flag.String("label", "TeamBargelt_DotNetCore13", "The name of the label to use in Jenkins")
+	label            = flag.String("label", "TeamBargelt_DotNetCore03", "The name of the label to use in Jenkins")
 	jenkinsURL       = flag.String("jenkins", "http://dockerbuild.harebrained-apps.com", "The URL of the Jenkins Master.")
 	jenkinsUser      = flag.String("jenkinsuser", "stevebargelt", "A user with rights to the registry we are pulling the test image from.")
 	jenkinsPassword  = flag.String("jenkinspassword", "notARealPassword", "The password of the registry user")
@@ -44,31 +44,31 @@ func main() {
 		panic(err)
 	}
 	startDockerContainer(newContainer)
-	// testResult, err := testDockerContainer(newContainer)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// if !testResult {
-	// 	fmt.Println("test failed!")
-	// 	fmt.Println("Need to handle this (still remove contianer but then quit)!")
+	testResult, err := testDockerContainer(newContainer)
+	if err != nil {
+		panic(err)
+	}
+	if !testResult {
+		fmt.Println("test failed!")
+		fmt.Println("Need to handle this (still remove contianer but then quit)!")
 
-	// }
+	}
 	removeDockerContainer(newContainer)
 
-	//TODO: If tests pass you want to pull the image to all hosts in SWARM to save time at build (advice from Maxfield Stewart of Riot Games )
+	//TODO: If tests pass we want to pull the image to all hosts in SWARM to save time at build
+	//		(advice from Maxfield Stewart of Riot Games )
 
-	fmt.Print("\n\n********************\nAdd Slave Template to Jenkins\n********************\n")
-	//Add Docker Slave Template to Jenkins
+	fmt.Print("\n\n********************\nAdd Build To Jenkins\n********************\n")
+
 	fmt.Print("Checking that label ", *label, " is unique...")
 	labelIsUnique, err := jenkins.CheckLabelIsUnique(*jenkinsURL, *cloudName, *label, *jenkinsUser, *jenkinsPassword)
 	if err != nil {
 		panic(err)
 	}
-
 	if labelIsUnique {
 		fmt.Println(" it is unique, continuing.")
 	} else {
-		fmt.Println(" it is NOT unique! Labels mut be unique.")
+		fmt.Println(" it is NOT unique! build labels mut be unique.")
 		fmt.Println("The label", *label, "is not unique in Jenkins at", *jenkinsURL, "cannot create this build.")
 		fmt.Println("exiting...")
 		os.Exit(1)
@@ -86,10 +86,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Print("\n********************\nAdding job to Jenkins\n********************\n")
-	//TODO
 	fmt.Print("Connecting to Jenkins... ")
-	jenkinsClient, err := jenkins.InitClient(*jenkinsURL, *jenkinsURL, *jenkinsPassword)
+	jenkinsClient, err := jenkins.InitClient(*jenkinsURL, *jenkinsUser, *jenkinsPassword)
 	if err != nil {
 		fmt.Println("failed. Exiting")
 		os.Exit(1)
@@ -100,25 +98,25 @@ func main() {
 	}
 	fmt.Println("success. Connected.")
 
-	jobs, err := jenkinsClient.GetAllJobs()
-	if err != nil {
-		panic(err)
-	}
-	if len(jobs) == 0 {
-		//create error obj
-		//return nil, err.
-		fmt.Println("Get All Jobs Failed. Jobs Count = ", len(jobs))
-	}
+	// jobs, err := jenkinsClient.GetAllJobs()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// if len(jobs) == 0 {
+	// 	//create error obj
+	// 	//return nil, err.
+	// 	fmt.Println("Get All Jobs Failed. Jobs Count = ", len(jobs))
+	// }
 
-	job, err := jenkinsClient.GetJob("testjob")
-	if err != nil {
-		panic("Job Does Not Exist")
-	}
-	build, err := job.GetLastSuccessfulBuild()
-
-	fmt.Println("Last run =", build.GetDuration()/1000, "seconds")
+	// job, err := jenkinsClient.GetJob("testjob")
+	// if err != nil {
+	// 	panic("Job Does Not Exist")
+	// }
+	// build, err := job.GetLastSuccessfulBuild()
+	//fmt.Println("Last run =", build.GetDuration()/1000, "seconds")
 
 	fmt.Print("adding job... ")
+	//TODO: Move this to a config file...
 	configString := `<?xml version='1.0' encoding='UTF-8'?>
 						<flow-definition plugin="workflow-job@2.6">
 						<description></description>
@@ -149,17 +147,17 @@ func main() {
 	}
 	fmt.Println("success!", newJob.GetName())
 
-	// //TODO: kick off the first build
-	// m := make(map[string]string)
-	// jobBool, err := newJob.InvokeSimple(m)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// if jobBool {
-	// 	fmt.Println("Job Success")
-	// } else {
-	// 	fmt.Println("job fail")
-	// }
+	//TODO: kick off the first build
+	m := make(map[string]string)
+	jobBool, err := newJob.InvokeSimple(m)
+	if err != nil {
+		panic(err)
+	}
+	if jobBool {
+		fmt.Println("Build Success")
+	} else {
+		fmt.Println("Build fail")
+	}
 }
 
 func connectToDockerHost() {
@@ -188,20 +186,20 @@ func pullDockerImage() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("success! Pulled Image ID:", newImage.ID)
+	fmt.Println(" success!\nPulled Image ID:", newImage.ID[7:19])
 
 }
 
 func createDockerContainer() (types.ContainerCreateResponse, error) {
 
-	fmt.Print("Creating continer name from ", *imageName, "...")
+	fmt.Print("Creating continer from ", *imageName, "...")
 	//TODO: unique value here for container name? Add GUID? Add LabelName?
 	//TODO: create process to kill all containers that start with harbormasterTesting??
 	newContianer, err := dockerClient.CreateContainer(*imageName, "harbormasterTesting"+*label)
 	if err != nil {
 		return *newContianer, err
 	}
-	fmt.Println("success. Created container", newContianer.ID)
+	fmt.Println(" success.\nContiner ID: ", newContianer.ID[0:11])
 	return *newContianer, nil
 
 }
@@ -209,7 +207,7 @@ func createDockerContainer() (types.ContainerCreateResponse, error) {
 func startDockerContainer(container types.ContainerCreateResponse) {
 
 	var err error
-	fmt.Print("Starting continer", container.ID, "...")
+	fmt.Print("Starting continer ", container.ID[0:11], "...")
 	err = dockerClient.StartContainer(container.ID)
 	if err != nil {
 		panic(err)
@@ -220,16 +218,15 @@ func startDockerContainer(container types.ContainerCreateResponse) {
 func testDockerContainer(container types.ContainerCreateResponse) (bool, error) {
 
 	//TODO: Write tests to make sure the container fits company standards
-	fmt.Print("Testing continer", container.ID, "...")
+	fmt.Print("Testing continer ", container.ID[0:11], "...")
 	containerInfo, err := dockerClient.ContainerInspect(container.ID)
 	if err != nil {
-		fmt.Println("WTF we are here...")
 		return false, err
 	}
-	fmt.Println("CONTAINERINFO:")
-	fmt.Println("Name:", containerInfo.Name)
-	fmt.Println("Status:", containerInfo.State.Status)
-	fmt.Println("Exit Code:", containerInfo.State.ExitCode)
+	// fmt.Println("CONTAINERINFO:")
+	// fmt.Println("Name:", containerInfo.Name)
+	// fmt.Println("Status:", containerInfo.State.Status)
+	// fmt.Println("Exit Code:", containerInfo.State.ExitCode)
 	if containerInfo.State.ExitCode != 0 {
 		fmt.Println("failed. Exit code must be 0.")
 		return false, nil
@@ -241,7 +238,7 @@ func testDockerContainer(container types.ContainerCreateResponse) (bool, error) 
 func removeDockerContainer(container types.ContainerCreateResponse) error {
 
 	var err error
-	fmt.Print("Removing continer", container.ID, "...")
+	fmt.Print("Removing continer ", container.ID[0:11], "...")
 	err = dockerClient.ContainerRemove(container.ID)
 	if err != nil {
 		return err
