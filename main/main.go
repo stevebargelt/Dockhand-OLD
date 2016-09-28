@@ -21,7 +21,7 @@ var (
 	registryPassword = flag.String("registrypassword", "notARealPassword", "The password of the registry user")
 	imageName        = flag.String("imagename", "dockerbuild.harebrained-apps.com/jenkins-slavedotnet", "The name of the image we are testing.")
 	cloudName        = flag.String("cloudname", "AzureJenkins", "The name of the cloud configuration in Jenkins to use.")
-	label            = flag.String("label", "TeamBargelt_DotNetCore03", "The name of the label to use in Jenkins")
+	label            = flag.String("label", "TeamBargelt_DotNetCore04", "The name of the label to use in Jenkins")
 	jenkinsURL       = flag.String("jenkins", "http://dockerbuild.harebrained-apps.com", "The URL of the Jenkins Master.")
 	jenkinsUser      = flag.String("jenkinsuser", "stevebargelt", "A user with rights to the registry we are pulling the test image from.")
 	jenkinsPassword  = flag.String("jenkinspassword", "notARealPassword", "The password of the registry user")
@@ -97,25 +97,7 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("success. Connected.")
-
-	// jobs, err := jenkinsClient.GetAllJobs()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// if len(jobs) == 0 {
-	// 	//create error obj
-	// 	//return nil, err.
-	// 	fmt.Println("Get All Jobs Failed. Jobs Count = ", len(jobs))
-	// }
-
-	// job, err := jenkinsClient.GetJob("testjob")
-	// if err != nil {
-	// 	panic("Job Does Not Exist")
-	// }
-	// build, err := job.GetLastSuccessfulBuild()
-	//fmt.Println("Last run =", build.GetDuration()/1000, "seconds")
-
-	fmt.Print("adding job... ")
+	fmt.Print("Adding jenkins job... ")
 	//TODO: Move this to a config file...
 	configString := `<?xml version='1.0' encoding='UTF-8'?>
 						<flow-definition plugin="workflow-job@2.6">
@@ -138,26 +120,27 @@ func main() {
 						<triggers/>
 						</flow-definition>`
 
-	tempStr := *label + "JOB"
+	tempStr := *label + "_JOB"
 	newJob, err := jenkinsClient.CreateJob(configString, tempStr)
 	if err != nil {
 		panic(err)
 		//fmt.Println("failed. Exiting")
 		//os.Exit(1)
 	}
-	fmt.Println("success!", newJob.GetName())
+	fmt.Println("success! Created", newJob.GetName(), ".")
 
-	//TODO: kick off the first build
+	fmt.Print("Kicking first build... ")
 	m := make(map[string]string)
 	jobBool, err := newJob.InvokeSimple(m)
 	if err != nil {
 		panic(err)
 	}
 	if jobBool {
-		fmt.Println("Build Success")
+		fmt.Println("build Success.")
 	} else {
-		fmt.Println("Build fail")
+		fmt.Println("build fail.")
 	}
+
 }
 
 func connectToDockerHost() {
