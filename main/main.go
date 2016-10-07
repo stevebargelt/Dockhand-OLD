@@ -13,18 +13,19 @@ import (
 
 var (
 	dockerHostURL    = flag.String("dockerurl", "tcp://dockerbuild.harebrained-apps.com:2376", "the full address to the docker Jenkins host: tcp://<address>:<port>")
+	dockerTLSFolder  = flag.String("dockertlsfolder", "/users/steve/tlsBlog/", "Path to PEM encoded certificate, Key and CA for secure Docker TLS communication")
 	certFile         = flag.String("cert", "/users/steve/tlsBlog/cert.pem", "Path to a PEM eoncoded certificate file.")
 	keyFile          = flag.String("key", "/users/steve/tlsBlog/key.pem", "Path to a PEM encoded private key file.")
 	caFile           = flag.String("CA", "/users/steve/tlsBlog/ca.pem", "Path to a PEM encoded CA certificate file.")
 	registryURL      = flag.String("registry", "https://dockerbuild.harebrained-apps.com", "The URL of the registry of where to find the image we are testing.")
 	registryUser     = flag.String("registryuser", "dockerUser", "A user with rights to the registry we are pulling the test image from.")
-	registryPassword = flag.String("registrypassword", "notARealPassword", "The password of the registry user")
+	registryPassword = flag.String("registrypassword", "correcthorsebatteystaple", "The password of the registry user")
 	imageName        = flag.String("imagename", "dockerbuild.harebrained-apps.com/jenkins-slavedotnet", "The name of the image we are testing.")
 	cloudName        = flag.String("cloudname", "AzureJenkins", "The name of the cloud configuration in Jenkins to use.")
-	label            = flag.String("label", "TeamBargelt_DotNetCore22", "The name of the label to use in Jenkins")
+	label            = flag.String("label", "TeamBargelt_DotNetCore23", "The name of the label to use in Jenkins")
 	jenkinsURL       = flag.String("jenkins", "http://dockerbuild.harebrained-apps.com", "The URL of the Jenkins Master.")
 	jenkinsUser      = flag.String("jenkinsuser", "stevebargelt", "A user with rights to the registry we are pulling the test image from.")
-	jenkinsPassword  = flag.String("jenkinspassword", "notARealPassword", "The password of the registry user")
+	jenkinsPassword  = flag.String("jenkinspassword", "correcthorsebatteystaple", "The password of the registry user")
 	repoURL          = flag.String("repourl", "https://github.com/stevebargelt/simpleDotNet.git", "The repo url.")
 
 	dockerClient  *docker.Host
@@ -170,7 +171,7 @@ func connectToDockerHost() {
 
 	var err error
 	fmt.Print("Connecting to dockerhost... ")
-	dockerClient, err = docker.New(*dockerHostURL, *certFile, *keyFile, *caFile)
+	dockerClient, err = docker.New(*dockerHostURL, *dockerTLSFolder)
 	if err != nil {
 		panic(err)
 	}

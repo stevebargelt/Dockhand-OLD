@@ -27,8 +27,9 @@ type Host struct {
 }
 
 //New - creates a new Docker Host with given docker host URL and TLS cert file paths
-func New(URL string, certFile string, keyFile string, caFile string) (*Host, error) {
+func NewWithFiles(URL, certFile, keyFile, caFile string) (*Host, error) {
 
+	//TODO: handle ooverrides when individual file names are sent in
 	url := strings.TrimSuffix(URL, "/")
 
 	// Load client cert
@@ -39,6 +40,39 @@ func New(URL string, certFile string, keyFile string, caFile string) (*Host, err
 
 	// Load CA cert
 	caCert, err := ioutil.ReadFile(caFile)
+	if err != nil {
+		return nil, err
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	// Setup HTTPS client
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      caCertPool,
+	}
+
+	tlsConfig.BuildNameToCertificate()
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+
+	return newClientFromTransport(url, transport)
+}
+
+//New - creates a new Docker Host with given docker host URL and TLS cert file paths
+func New(URL, tlslocation string) (*Host, error) {
+
+	//TODO: handle optional params for individual file names
+	url := strings.TrimSuffix(URL, "/")
+	tlslocation = strings.TrimSuffix(tlslocation, "/")
+
+	// Load client cert
+	cert, err := tls.LoadX509KeyPair(tlslocation+"/cert.pem", tlslocation+"/key.pem")
+	if err != nil {
+		return nil, err
+	}
+
+	// Load CA cert
+	caCert, err := ioutil.ReadFile(tlslocation + "/ca.pem")
 	if err != nil {
 		return nil, err
 	}
