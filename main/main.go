@@ -13,11 +13,11 @@ import (
 
 var (
 	dockerHostURL    = flag.String("dockerurl", "tcp://dockerbuild.harebrained-apps.com:2376", "the full address to the docker Jenkins host: tcp://<address>:<port>")
-	dockerTLSFolder  = flag.String("dockertlsfolder", "/users/steve/tlsBlog/", "Path to PEM encoded certificate, Key and CA for secure Docker TLS communication")
-	certFile         = flag.String("cert", "/users/steve/tlsBlog/cert.pem", "Path to a PEM eoncoded certificate file.")
-	keyFile          = flag.String("key", "/users/steve/tlsBlog/key.pem", "Path to a PEM encoded private key file.")
-	caFile           = flag.String("CA", "/users/steve/tlsBlog/ca.pem", "Path to a PEM encoded CA certificate file.")
-	registryURL      = flag.String("registry", "https://dockerbuild.harebrained-apps.com", "The URL of the registry of where to find the image we are testing.")
+	dockerTLSFolder  = flag.String("dockertlsfolder", "/users/steve/tlsBuild/", "Path to PEM encoded certificate, Key and CA for secure Docker TLS communication")
+	certFile         = flag.String("cert", "/users/steve/tlsBuild/cert.pem", "Path to a PEM eoncoded certificate file.")
+	keyFile          = flag.String("key", "/users/steve/tlsBuild/key.pem", "Path to a PEM encoded private key file.")
+	caFile           = flag.String("CA", "/users/steve/tlsBuild/ca.pem", "Path to a PEM encoded CA certificate file.")
+	registryURL      = flag.String("registry", "https://dockerregistry.harebrained-apps.com", "The URL of the registry of where to find the image we are testing.")
 	registryUser     = flag.String("registryuser", "dockerUser", "A user with rights to the registry we are pulling the test image from.")
 	registryPassword = flag.String("registrypassword", "correcthorsebatteystaple", "The password of the registry user")
 	imageName        = flag.String("imagename", "dockerbuild.harebrained-apps.com/jenkins-slavedotnet", "The name of the image we are testing.")
