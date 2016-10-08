@@ -7,8 +7,8 @@ import (
 
 	"github.com/bndr/gojenkins"
 	"github.com/docker/docker/api/types"
-	"github.com/stevebargelt/harbormaster/docker"
-	"github.com/stevebargelt/harbormaster/jenkins"
+	"github.com/stevebargelt/Dockhand/docker"
+	"github.com/stevebargelt/Dockhand/jenkins"
 )
 
 var (
@@ -201,8 +201,8 @@ func createDockerContainer() (types.ContainerCreateResponse, error) {
 
 	fmt.Print("Creating continer from ", *imageName, "...")
 	//TODO: unique value here for container name? Add GUID? Add LabelName?
-	//TODO: create process to kill all containers that start with harbormasterTesting??
-	newContianer, err := dockerClient.CreateContainer(*imageName, "harbormasterTesting"+*label)
+	//TODO: create process to kill all containers that start with DockhandTesting??
+	newContianer, err := dockerClient.CreateContainer(*imageName, "DockhandTesting"+*label)
 	if err != nil {
 		return *newContianer, err
 	}
