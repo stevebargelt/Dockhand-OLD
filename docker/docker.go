@@ -177,7 +177,7 @@ func (d *Host) pullImage(imageName, registryUsername, registryPassword, registry
 }
 
 //CreateContainer - creates a container named containerName given an imageName
-func (d *Host) CreateContainer(imageName, containerName string) (*types.ContainerCreateResponse, error) {
+func (d *Host) CreateContainer(imageName, containerName string) (*container.ContainerCreateCreatedBody, error) {
 
 	container, err := d.DockerCli.ContainerCreate(context.Background(), &container.Config{Image: imageName}, nil, nil, containerName)
 	if err != nil {

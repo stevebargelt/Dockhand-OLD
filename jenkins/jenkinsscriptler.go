@@ -1,8 +1,10 @@
 package jenkins
 
 import (
+	"bytes"
+	"compress/gzip"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -16,19 +18,34 @@ func CheckLabelIsUnique(jenkinsURL string, cloudName string, label string, usern
 	client := &http.Client{}
 	url := jenkinsURL + "/scriptler/run/getLabels.groovy?cloudName=" + cloudName
 	r, err := http.NewRequest("GET", url, nil)
+	r.Header.Add("Accept-Encoding", "gzip")
 	r.SetBasicAuth(username, password)
 
-	resp, err := client.Do(r)
+	response, err := client.Do(r)
 	if err != nil {
 		return false, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		err := errors.New("ERROR: Response code: " + string(resp.StatusCode) + " from " + url)
+	defer response.Body.Close()
+
+	// Check that the server actually sent compressed data
+	var reader io.ReadCloser
+	switch response.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err = gzip.NewReader(response.Body)
+		defer reader.Close()
+	default:
+		reader = response.Body
+	}
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(reader)
+	body := buf.String()
+
+	if response.StatusCode != 200 {
+		err := errors.New("ERROR: Response code: " + string(response.StatusCode) + " from " + url)
 		return false, err
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return false, err
 	}
@@ -50,20 +67,31 @@ func CreateDockerTemplate(jenkinsURL string, cloudName string, label string, doc
 	url := jenkinsURL + "/scriptler/run/createDockerTemplate.groovy?cloudName=" + cloudName + "&label=" + label + "&image=" + dockerImage
 
 	r, err := http.NewRequest("GET", url, nil)
+	r.Header.Add("Accept-Encoding", "gzip")
 	r.SetBasicAuth(username, password)
 
-	resp, err := client.Do(r)
+	response, err := client.Do(r)
 	if err != nil {
 		return false, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		err := errors.New("ERROR: Response code: " + string(resp.StatusCode) + " from " + url)
-		return false, err
+	defer response.Body.Close()
+
+	// Check that the server actually sent compressed data
+	var reader io.ReadCloser
+	switch response.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err = gzip.NewReader(response.Body)
+		defer reader.Close()
+	default:
+		reader = response.Body
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(reader)
+	body := buf.String()
+
+	if response.StatusCode != 200 {
+		err := errors.New("ERROR: Response code: " + string(response.StatusCode) + " from " + url)
 		return false, err
 	}
 
