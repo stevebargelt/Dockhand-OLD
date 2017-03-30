@@ -26,6 +26,18 @@ type Host struct {
 	//Logf   LogfCallback
 }
 
+func BuildAuth(registryUsername, registryPassword, registryURL string) (string, error) {
+
+	authConfig := types.AuthConfig{Username: registryUsername, Password: registryPassword, ServerAddress: registryURL}
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(authConfig); err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(buf.Bytes()), nil
+
+}
+
 //New - creates a new Docker Host with given docker host URL and TLS cert file paths
 func NewWithFiles(URL, certFile, keyFile, caFile string) (*Host, error) {
 
@@ -124,6 +136,42 @@ func newClientFromTransport(url string, transport http.RoundTripper) (*Host, err
 
 }
 
+//BuildDockerImage : given an imageName (name:tag) and Git repo will build an image on the Docker host with the imageName
+func (d *Host) BuildDockerImage(imageName, repo string) error {
+
+	tags := []string{imageName}
+
+	options := types.ImageBuildOptions{RemoteContext: repo, Tags: tags}
+
+	buildResponse, err := d.DockerCli.ImageBuild(context.Background(), nil, options)
+	if err != nil {
+		fmt.Println("Cannot build image ", imageName, " from repo ", repo, " | err=", err)
+		return err
+	}
+
+	buildResponse.Body.Close()
+	return nil
+}
+
+func (d *Host) PushDockerImage(imageName, registryUsername, registryPassword, registryURL string) error {
+
+	encodedAuth, err := BuildAuth(registryUsername, registryPassword, registryURL)
+	if err != nil {
+		return err
+	}
+	options := types.ImagePushOptions{RegistryAuth: encodedAuth}
+	pushResponse, err := d.DockerCli.ImagePush(context.Background(), imageName, options)
+	if err != nil {
+		fmt.Println("Cannot push image ", imageName, " | err=", err)
+		return err
+	}
+	body, err := ioutil.ReadAll(pushResponse)
+	fmt.Println("*******************************")
+	fmt.Println("The Body of the push response is: ", string(body))
+	fmt.Println("*******************************")
+	return nil
+}
+
 //GetDockerImage given imageName and the registry information returns a docker image
 func (d *Host) GetDockerImage(imageName, registryUsername, registryPassword, registryURL string) (*types.ImageInspect, error) {
 
@@ -159,7 +207,10 @@ func (d *Host) pullImage(imageName, registryUsername, registryPassword, registry
 	if err := json.NewEncoder(&buf).Encode(authConfig); err != nil {
 		return nil, err
 	}
-	encodedAuth := base64.URLEncoding.EncodeToString(buf.Bytes())
+	encodedAuth, err := BuildAuth(registryUsername, registryPassword, registryURL)
+	if err != nil {
+		return nil, err
+	}
 
 	options := types.ImagePullOptions{RegistryAuth: encodedAuth}
 	readCloser, err := d.DockerCli.ImagePull(context.Background(), ref, options)
