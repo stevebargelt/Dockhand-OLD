@@ -7,6 +7,8 @@ import (
 
 	"github.com/bndr/gojenkins"
 	"github.com/docker/docker/api/types/container"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"github.com/stevebargelt/Dockhand/docker"
 	"github.com/stevebargelt/Dockhand/jenkins"
 )
@@ -27,6 +29,7 @@ var (
 	jenkinsUser      = flag.String("jenkinsuser", "stevebargelt", "A user with rights to the registry we are pulling the test image from.")
 	jenkinsPassword  = flag.String("jenkinspassword", "correcthorsebatteystaple", "The password of the registry user")
 	repoURL          = flag.String("repourl", "https://github.com/stevebargelt/simpleDotNet.git", "The repo url.")
+	configFile       = flag.String("config", "dockhand.yml", "A config file to use.")
 
 	dockerClient  *docker.Host
 	jenkinsClient *gojenkins.Jenkins
@@ -36,7 +39,11 @@ func main() {
 
 	var err error
 
-	flag.Parse()
+	//flag.Parse()
+
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	pflag.Parse()
+	viper.BindPFlags(pflag.CommandLine)
 
 	fmt.Print("\n********************\n Docker Image and Container Verification Process\n********************\n")
 	connectToDockerHost()
@@ -170,7 +177,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if jobResult == 0 {
+	if jobResult == true {
 		fmt.Println("build Success.")
 	} else {
 		fmt.Println("build fail.")
